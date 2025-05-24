@@ -1,0 +1,185 @@
+// main.jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// App.jsx
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Tooltip,
+} from "recharts";
+
+const questions = [
+  {
+    area: "การทำงาน",
+    prompts: [
+      "วันนี้คุณรู้สึกอย่างไรกับการทำงาน?",
+      "คุณรู้สึกมีแรงบันดาลใจหรือมีเป้าหมายในสิ่งที่ทำอยู่ไหม?",
+    ],
+  },
+  {
+    area: "ความสัมพันธ์",
+    prompts: [
+      "คุณรู้สึกว่าได้รับความเข้าใจจากคนรอบข้างไหม?",
+      "คุณรู้สึกว่ามีคนรักและคอยสนับสนุนด้านอารมณ์ไหม?",
+    ],
+  },
+  {
+    area: "ความสุขส่วนตัว",
+    prompts: [
+      "ตอนนี้คุณพึงพอใจกับชีวิตของคุณแค่ไหน?",
+      "คุณได้ทำสิ่งที่คุณชอบหรือมีความสุขไปแล้วหรือยัง?",
+    ],
+  },
+  {
+    area: "พลังงานกายใจ",
+    prompts: [
+      "คุณพักผ่อนเพียงพอไหม?",
+      "คุณรู้สึกมีพลังในการเริ่มต้นวันใหม่หรือเปล่า?",
+    ],
+  },
+];
+
+export default function App() {
+  const [step, setStep] = useState("home");
+  const [responses, setResponses] = useState({});
+
+  const handleAnswer = (area, index, value) => {
+    setResponses((prev) => ({
+      ...prev,
+      [area]: {
+        ...(prev[area] || {}),
+        [index]: value[0],
+      },
+    }));
+  };
+
+  const calculateResults = () => {
+    return questions.map(({ area }) => {
+      const scores = Object.values(responses[area] || {});
+      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      return { area, score: Math.round(avg * 10) / 10 };
+    });
+  };
+
+  if (step === "home") {
+    return (
+      <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center text-center px-4">
+        <h1 className="text-2xl font-semibold mb-4">มาสำรวจใจตัวเองกันสักครู่เถอะ</h1>
+        <Button onClick={() => setStep("form")}>เริ่มเช็คอินอารมณ์</Button>
+        <p className="mt-2 text-sm">ใช้เวลาเพียง 1 นาทีเท่านั้น</p>
+      </div>
+    );
+  }
+
+  if (step === "form") {
+    return (
+      <div className="min-h-screen bg-blue-50 p-4 space-y-6">
+        {questions.map(({ area, prompts }, i) => (
+          <Card key={i} className="bg-white shadow-md rounded-2xl">
+            <CardContent className="space-y-4 p-4">
+              <h2 className="text-xl font-semibold text-blue-700">{area}</h2>
+              {prompts.map((prompt, j) => (
+                <div key={j}>
+                  <p className="mb-1">{prompt}</p>
+                  <div className="flex justify-between text-sm text-gray-500 px-1">
+                    <span>น้อย</span>
+                    <span>มาก</span>
+                  </div>
+                  <Slider
+                    defaultValue={[3]}
+                    min={1}
+                    max={5}
+                    step={1}
+                    onValueChange={(val) => handleAnswer(area, j, val)}
+                    className="text-blue-500"
+                    thumbClassName="before:content-['❤️'] before:text-pink-400 before:text-xl"
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+        <Button className="w-full" onClick={() => setStep("result")}>
+          ดูผลสะท้อนอารมณ์ของฉัน
+        </Button>
+      </div>
+    );
+  }
+
+  if (step === "result") {
+    const results = calculateResults();
+    const highlight = results.sort((a, b) => b.score - a.score);
+    const summary = `วันนี้คุณดูแข็งแรงในเรื่อง "${highlight[0].area}" แต่ดูอ่อนล้าในเรื่อง "${highlight[highlight.length - 1].area}" หายใจลึก ๆ และให้กำลังใจตัวเองนะ 😊`;
+
+    return (
+      <div className="min-h-screen bg-blue-100 p-4">
+        <h2 className="text-xl font-bold mb-4 text-center">ผลสะท้อนใจของคุณ</h2>
+        <div className="flex justify-center">
+          <RadarChart outerRadius={90} width={350} height={300} data={results}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="area" />
+            <PolarRadiusAxis domain={[0, 5]} tickFormatter={(tick) => `${tick}`} />
+            <Tooltip formatter={(value) => [`${value} คะแนน`, "ระดับ"]} />
+            <Radar
+              name="คะแนนของคุณ"
+              dataKey="score"
+              stroke="#3B82F6"
+              fill="#3B82F6"
+              fillOpacity={0.6}
+            />
+          </RadarChart>
+        </div>
+        <p className="text-center mt-4 text-lg">{summary}</p>
+        <div className="flex flex-col items-center gap-2 mt-6">
+          <Button onClick={() => setStep("form")}>🔁 ทำแบบเช็คอินใหม่</Button>
+        </div>
+      </div>
+    );
+  }
+}
+
+// index.html
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>เช็คอินอารมณ์ | JAi Mirror</title>
+    <meta name="description" content="แบบประเมินอารมณ์รายวันเพื่อสะท้อนใจตัวเองภายใน 1 นาที" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="bg-blue-50 text-gray-800">
+    <div id="root"></div>
+    <script type="module" src="/main.jsx"></script>
+  </body>
+</html>
+
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  base: '/Selfcheckinjai/',
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@/': `${__dirname}/src/`
+    }
+  }
+});
